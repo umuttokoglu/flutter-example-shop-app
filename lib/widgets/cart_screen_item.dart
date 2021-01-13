@@ -10,17 +10,20 @@ class CartScreenItem extends StatelessWidget {
   final int quantity;
   final String title;
 
-  CartScreenItem({this.id, this.price, this.quantity, this.title, this.productId});
+  CartScreenItem(
+      {this.id, this.price, this.quantity, this.title, this.productId});
 
   @override
   Widget build(BuildContext context) {
     return Dismissible(
       key: ValueKey(id),
       background: Container(
-        color: Theme
-            .of(context)
-            .errorColor,
-        child: Icon(Icons.delete, color: Colors.white, size: 40,),
+        color: Theme.of(context).errorColor,
+        child: Icon(
+          Icons.delete,
+          color: Colors.white,
+          size: 40,
+        ),
         alignment: Alignment.centerRight,
         padding: EdgeInsets.all(20),
         margin: EdgeInsets.symmetric(
@@ -29,6 +32,29 @@ class CartScreenItem extends StatelessWidget {
         ),
       ),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) {
+        return showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Are you sure?'),
+            content: Text('Dou you want to remove the item from the cart?'),
+            actions: [
+              FlatButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop(false);
+                },
+                child: Text('No'),
+              ),
+              FlatButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop(true);
+                },
+                child: Text('Yes'),
+              ),
+            ],
+          ),
+        );
+      },
       onDismissed: (direction) {
         Provider.of<CartProvider>(context, listen: false).removeItem(productId);
       },
