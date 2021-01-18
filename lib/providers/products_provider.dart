@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
+import '../models/http_exception.dart';
 import '../models/product.dart';
 
 class ProductsProvider with ChangeNotifier {
   List<Product> _items = [
-    Product(
+    /*Product(
       id: 'p1',
       title: 'Red Shirt',
       description: 'A red shirt - it is pretty red!',
@@ -35,7 +38,7 @@ class ProductsProvider with ChangeNotifier {
       price: 49.99,
       imageUrl:
           'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Cast-Iron-Pan.jpg/1024px-Cast-Iron-Pan.jpg',
-    ),
+    ),*/
   ];
 
   List<Product> get items {
@@ -50,31 +53,105 @@ class ProductsProvider with ChangeNotifier {
     return _items.firstWhere((element) => element.id == id);
   }
 
-  void addProduct(Product product) {
-    final newProduct = Product(
-      id: DateTime.now().toString(),
-      price: product.price,
-      title: product.title,
-      description: product.description,
-      imageUrl: product.imageUrl,
-    );
+  Future<void> fetchAndSetProducts() async {
+    const url =
+        'https://shop-app-dbe37-default-rtdb.firebaseio.com/products.json';
 
-    _items.add(newProduct);
+    try {
+      final response = await http.get(url);
+      final extractedData = json.decode(response.body) as Map<String, dynamic>;
+      final List<Product> loadedProducts = [];
 
-    notifyListeners();
+      if (extractedData == null) return;
+
+      extractedData.forEach((prodId, prodData) {
+        loadedProducts.add(Product(
+          id: prodId,
+          title: prodData['title'],
+          description: prodData['description'],
+          price: prodData['price'],
+          imageUrl: prodData['imageUrl'],
+          isFavorite: prodData['isFavorite'],
+        ));
+      });
+      _items = loadedProducts;
+      notifyListeners();
+    } catch (err) {
+      throw err;
+    }
   }
 
-  void updateProduct(String id, Product newProduct) {
+  Future<void> addProduct(Product product) async {
+    const url =
+        'https://shop-app-dbe37-default-rtdb.firebaseio.com/products.json';
+
+    try {
+      final response = await http.post(
+        url,
+        body: json.encode({
+          'title': product.title,
+          'description': product.description,
+          'imageUrl': product.imageUrl,
+          'price': product.price,
+          'isFavorite': product.isFavorite,
+        }),
+      );
+
+      final newProduct = Product(
+        id: json.decode(response.body)['name'],
+        price: product.price,
+        title: product.title,
+        description: product.description,
+        imageUrl: product.imageUrl,
+      );
+
+      _items.add(newProduct);
+
+      notifyListeners();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  Future<void> updateProduct(String id, Product newProduct) async {
     final prodIndex = _items.indexWhere((prod) => prod.id == id);
 
     if (prodIndex >= 0) {
+      final url =
+          'https://shop-app-dbe37-default-rtdb.firebaseio.com/products/$id.json';
+
+      await http.patch(url,
+          body: json.encode({
+            'title': newProduct.title,
+            'description': newProduct.description,
+            'imageUrl': newProduct.imageUrl,
+            'price': newProduct.price,
+          }));
+
       _items[prodIndex] = newProduct;
       notifyListeners();
     }
   }
 
-  void deleteProduct(String id) {
-    _items.removeWhere((prod) => prod.id == id);
+  Future<void> deleteProduct(String id) async {
+    final url =
+        'https://shop-app-dbe37-default-rtdb.firebaseio.com/products/$id.json';
+
+    final existingProductIndex =
+        _items.indexWhere((element) => element.id == id);
+    var existingProduct = _items[existingProductIndex];
+
+    _items.removeAt(existingProductIndex);
     notifyListeners();
+
+    final response = await http.delete(url);
+
+    if (response.statusCode >= 400) {
+      _items.insert(existingProductIndex, existingProduct);
+      notifyListeners();
+      throw HttpException('Could not delete product.');
+    }
+
+    existingProduct = null;
   }
 }
