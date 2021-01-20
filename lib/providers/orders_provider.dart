@@ -7,15 +7,19 @@ import '../models/cart.dart';
 import '../models/order.dart';
 
 class OrdersProvider with ChangeNotifier {
+  final authToken;
+  final userId;
   List<OrderItem> _orders = [];
+
+  OrdersProvider(this.authToken, this.userId, this._orders);
 
   List<OrderItem> get orders {
     return [..._orders];
   }
 
   Future<void> fetchAndSetOrders() async {
-    const url =
-        'https://shop-app-dbe37-default-rtdb.firebaseio.com/orders.json';
+    final url =
+        'https://shop-app-dbe37-default-rtdb.firebaseio.com/orders/$userId.json?auth=$authToken';
 
     final response = await http.get(url);
     final List<OrderItem> loadedOrders = [];
@@ -44,8 +48,8 @@ class OrdersProvider with ChangeNotifier {
   }
 
   void addOrder(List<CartItem> cartProducts, double total) async {
-    const url =
-        'https://shop-app-dbe37-default-rtdb.firebaseio.com/orders.json';
+    final url =
+        'https://shop-app-dbe37-default-rtdb.firebaseio.com/orders/$userId.json?auth=$authToken';
     final timestamp = DateTime.now();
 
     final response = await http.post(
